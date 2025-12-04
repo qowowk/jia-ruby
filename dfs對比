@@ -1,0 +1,160 @@
+#include <bits/stdc++.h>
+using namespace std;
+using namespace chrono;
+
+// ======================================
+// 版本 A：舊版（path 掃描）
+// ======================================
+class GraphOld {
+public:
+    int V;
+    vector<vector<int>> adj;
+
+    GraphOld(int n) : V(n), adj(n) {}
+
+    void addEdge(int u, int v) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    bool isNotInPath(int v, vector<int>& path) {
+        for (int x : path) if (x == v) return false;
+        return true;
+    }
+
+    bool dfs(vector<int>& path, int pos) {
+        if (pos == V) return true;
+
+        int last = path[pos-1];
+        for (int v : adj[last]) {
+            if (isNotInPath(v, path)) {
+                path[pos] = v;
+                if (dfs(path, pos+1)) return true;
+                path[pos] = -1;
+            }
+        }
+        return false;
+    }
+
+    bool hasHamiltonianPath() {
+        vector<int> path(V, -1);
+
+        for (int start = 0; start < V; start++) {
+            fill(path.begin(), path.end(), -1);
+            path[0] = start;
+            if (dfs(path, 1)) return true;
+        }
+        return false;
+    }
+};
+
+// ======================================
+// 版本 B：新版（unordered_set）
+// ======================================
+class GraphNew {
+public:
+    int V;
+    vector<vector<int>> adj;
+
+    GraphNew(int n) : V(n), adj(n) {}
+
+    void addEdge(int u, int v) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    bool dfs(vector<int>& path, unordered_set<int>& used, int pos) {
+        if (pos == V) return true;
+
+        int last = path[pos-1];
+        for (int v : adj[last]) {
+            if (!used.count(v)) {
+                path[pos] = v;
+                used.insert(v);
+
+                if (dfs(path, used, pos+1)) return true;
+
+                used.erase(v);
+                path[pos] = -1;
+            }
+        }
+        return false;
+    }
+
+    bool hasHamiltonianPath() {
+        vector<int> path(V, -1);
+        unordered_set<int> used;
+
+        for (int start = 0; start < V; start++) {
+            fill(path.begin(), path.end(), -1);
+            used.clear();
+
+            path[0] = start;
+            used.insert(start);
+
+            if (dfs(path, used, 1)) return true;
+        }
+        return false;
+    }
+};
+
+// ======================================
+// 測試與主程式
+// ======================================
+GraphOld genOld(int V, double density) {
+    GraphOld g(V);
+    random_device rd; mt19937 rng(rd());
+
+    for (int i = 0; i < V; i++) {
+        for (int j = i+1; j < V; j++) {
+            if ((double)rng() / rng.max() < density)
+                g.addEdge(i, j);
+        }
+    }
+    return g;
+}
+
+GraphNew genNew(int V, double density) {
+    GraphNew g(V);
+    random_device rd; mt19937 rng(rd());
+
+    for (int i = 0; i < V; i++) {
+        for (int j = i+1; j < V; j++) {
+            if ((double)rng() / rng.max() < density)
+                g.addEdge(i, j);
+        }
+    }
+    return g;
+}
+
+int main() {
+    vector<int> testV = {8, 10, 12, 14}; // 適合展示差異
+    double density = 0.5; // 50% 密度
+
+    for (int V : testV) {
+        cout << "=============================\n";
+        cout << "測試頂點數 V = " << V << "\n";
+
+        GraphOld g1 = genOld(V, density);
+        GraphNew g2 = genNew(V, density);
+
+        // 舊版
+        auto t1 = high_resolution_clock::now();
+        g1.hasHamiltonianPath();
+        auto t2 = high_resolution_clock::now();
+        auto old_ms = duration_cast<milliseconds>(t2 - t1).count();
+
+        // 新版
+        auto t3 = high_resolution_clock::now();
+        g2.hasHamiltonianPath();
+        auto t4 = high_resolution_clock::now();
+        auto new_ms = duration_cast<milliseconds>(t4 - t3).count();
+
+        cout << "舊版時間（掃描 path）\t: " << old_ms << " ms\n";
+        cout << "新版時間（unordered_set）: " << new_ms << " ms\n";
+
+        cout << "-----------------------------\n";
+    }
+
+    return 0;
+}
