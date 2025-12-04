@@ -1,7 +1,12 @@
-#include <iostream>
 #include <bits/stdc++.h>
-using namespace std;
+using namespace std::chrono;
 
+auto t1 = high_resolution_clock::now();
+dfs(graph);
+auto t2 = high_resolution_clock::now();
+
+auto ms = duration_cast<microseconds>(t2 - t1).count();
+cout << "Execution time: " << ms << " microseconds\n":;
 class Graph {
 private:
     int V; // 頂點數
@@ -125,4 +130,5 @@ int main() {
     }
     
     return 0;
+
 }
