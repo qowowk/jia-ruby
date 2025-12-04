@@ -1,74 +1,58 @@
+#include <iostream>
 #include <bits/stdc++.h>
-using namespace std::chrono;
+using namespace std;
 
-auto t1 = high_resolution_clock::now();
-dfs(graph);
-auto t2 = high_resolution_clock::now();
-
-auto ms = duration_cast<microseconds>(t2 - t1).count();
-cout << "Execution time: " << ms << " microseconds\n":;
 class Graph {
 private:
     int V; // 頂點數
     list<int>* adj; // 鄰接表
     
 public:
-//構造函數;初始化圖
     Graph(int V) {
         this->V = V;
-        adj = new list<int>[V];//為每個頂點創鄰接表
+        adj = new list<int>[V];
     }
-    //解構函數;釋放內存
+
     ~Graph() {
         delete[] adj;
     }
     
-    // 加邊
     void addEdge(int v, int w) {
-        adj[v].push_back(w);//v接到w的表
-        adj[w].push_back(v); // w接到v的表(無向圖
+        adj[v].push_back(w);
+        adj[w].push_back(v); 
     }
     
-    // 檢查當前路徑是否包含頂點v
     bool isNotInPath(int v, vector<int>& path) {
         for (int i = 0; i < path.size(); i++) {
             if (path[i] == v)
-                return false;//在
+                return false;
         }
-        return true;//不在
+        return true;
     }
     
-    // dfs地回函數
     bool hamiltonianPathUtil(vector<int>& path, int pos) {
-        // 如果所有頂點都已被走過，则找到
         if (pos == V) {
             return true;
         }
         
-        // 試試看所有與當前頂點相鄰的頂點,若是起始點就是-1
         int lastVertex = (pos == 0) ? -1 : path[pos-1];
-        //非起始點,嘗試所有與最後一個頂相鄰的頂
+
         if (lastVertex != -1) {
-            //只考慮沒在路徑中的頂點
             for (int v : adj[lastVertex]) {
                 if (isNotInPath(v, path)) {
-                    path[pos] = v;//點加入路徑
-                    //地回繼續找
+                    path[pos] = v;
                     if (hamiltonianPathUtil(path, pos+1)) {
-                        return true;//找到
+                        return true;
                     }
-                    // 回朔
                     path[pos] = -1;
                 }
             }
         } else {
-            // 如果是起始點，試所有頂點作為起點
             for (int v = 0; v < V; v++) {
                 path[pos] = v;
                 if (hamiltonianPathUtil(path, pos+1)) {
                     return true;
                 }
-                // 回溯
                 path[pos] = -1;
             }
         }
@@ -76,18 +60,16 @@ public:
         return false;
     }
     
-    // 查找hp
     vector<int> findHamiltonianPath() {
         vector<int> path(V, -1);
         
         if (hamiltonianPathUtil(path, 0)) {
             return path;
         } else {
-            return vector<int>(); // 返回空向量表示未找到
+            return vector<int>(); 
         }
     }
     
-    // 打印图
     void printGraph() {
         for (int i = 0; i < V; i++) {
             cout << "頂點 " << i << " 的鄰居: ";
@@ -100,7 +82,6 @@ public:
 };
 
 int main() {
-    // 這個是示範
     Graph g(5);
     g.addEdge(0, 1);
     g.addEdge(0, 3);
@@ -110,12 +91,21 @@ int main() {
     g.addEdge(2, 4);
     g.addEdge(3, 4);
     
-    cout << "圖的玲接表表示:" << endl;
+    cout << "圖的鄰接表表示:" << endl;
     g.printGraph();
     cout << endl;
-    
+
+    // 這裡開始計時
+    auto t1 = std::chrono::high_resolution_clock::now();
+
     vector<int> path = g.findHamiltonianPath();
-    
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto us = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+
+    cout << "執行時間: " << us << " microseconds" << endl;
+    // 計時結束
+
     if (!path.empty()) {
         cout << "找到了 ";
         for (int i = 0; i < path.size(); i++) {
@@ -130,5 +120,4 @@ int main() {
     }
     
     return 0;
-
 }
