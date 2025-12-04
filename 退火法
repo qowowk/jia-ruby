@@ -1,0 +1,205 @@
+import random
+import math
+import time
+import matplotlib.pyplot as plt
+import numpy as np
+
+class HamiltonianSolver:
+    """漢米頓路徑求解器基類"""
+    
+    def __init__(self, name):
+        self.name = name
+        self.execution_times = []
+        self.successes = 0
+    
+    def solve(self, graph, closed=True, **kwargs):
+        raise NotImplementedError
+
+class SimulatedAnnealingSolver(HamiltonianSolver):
+    """模擬退火求解器"""
+    
+    def __init__(self):
+        super().__init__("Simulated Annealing")
+    
+    def path_cost(self, path, graph, closed=True):
+        """計算路徑成本"""
+        if len(path) != len(graph):
+            return float('inf')
+        
+        cost = 0
+        n = len(path)
+        
+        for i in range(n - 1):
+            if path[i + 1] not in graph.get(path[i], {}):
+                cost += 1
+        
+        if closed and n > 0:
+            if path[0] not in graph.get(path[-1], {}):
+                cost += 1
+        
+        return cost
+    
+    def solve(self, graph, closed=True, **kwargs):
+        """執行模擬退火算法"""
+        start_time = time.time()
+        
+        # 參數
+        initial_temp = kwargs.get('initial_temp', 100.0)
+        cooling_rate = kwargs.get('cooling_rate', 0.995)
+        max_iterations = kwargs.get('max_iterations', 10000)
+        max_no_improve = kwargs.get('max_no_improve', 2000)
+        
+        # 節點列表
+        nodes = list(graph.keys())
+        
+        # 初始解
+        current = nodes.copy()
+        random.shuffle(current)
+        current_cost = self.path_cost(current, graph, closed)
+        
+        best = current.copy()
+        best_cost = current_cost
+        
+        T = initial_temp
+        no_improve = 0
+        
+        for iteration in range(max_iterations):
+            # 生成鄰居解：交換兩個隨機位置
+            neighbor = current.copy()
+            i, j = random.sample(range(len(neighbor)), 2)
+            neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
+            
+            neighbor_cost = self.path_cost(neighbor, graph, closed)
+            delta = neighbor_cost - current_cost
+            
+            # 接受新解
+            if delta < 0 or random.random() < math.exp(-delta / T):
+                current = neighbor
+                current_cost = neighbor_cost
+                
+                if current_cost < best_cost:
+                    best = current.copy()
+                    best_cost = current_cost
+                    no_improve = 0
+                else:
+                    no_improve += 1
+            else:
+                no_improve += 1
+            
+            # 降溫
+            T *= cooling_rate
+            
+            # 提前停止
+            if no_improve >= max_no_improve:
+                break
+        
+        exec_time = time.time() - start_time
+        self.execution_times.append(exec_time)
+        
+        # 檢查是否成功
+        success = (best_cost == 0)
+        if success:
+            self.successes += 1
+        
+        return best, best_cost, success, exec_time
+
+def generate_test_graphs():
+    """生成測試圖形"""
+    graphs = {}
+    
+    # 完全圖（一定有漢米頓迴路）
+    print("生成完全圖...")
+    n = 15
+    complete_graph = {i: {} for i in range(n)}
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                complete_graph[i][j] = 1.0
+    graphs['complete'] = complete_graph
+    
+    # 網格圖
+    print("生成網格圖...")
+    rows, cols = 3, 5
+    grid_graph = {}
+    for r in range(rows):
+        for c in range(cols):
+            node = r * cols + c
+            grid_graph[node] = {}
+            if r > 0:
+                grid_graph[node][(r-1)*cols + c] = 1.0
+            if r < rows-1:
+                grid_graph[node][(r+1)*cols + c] = 1.0
+            if c > 0:
+                grid_graph[node][r*cols + (c-1)] = 1.0
+            if c < cols-1:
+                grid_graph[node][r*cols + (c+1)] = 1.0
+    graphs['grid'] = grid_graph
+    
+    return graphs
+
+def quick_experiment():
+    """快速實驗"""
+    print("="*60)
+    print("漢米頓路徑算法快速比較實驗")
+    print("="*60)
+    
+    # 生成測試圖
+    graphs = generate_test_graphs()
+    
+    # 創建求解器
+    sa_solver = SimulatedAnnealingSolver()
+    
+    results = []
+    
+    for graph_name, graph in graphs.items():
+        print(f"\n測試 {graph_name} 圖 (節點數: {len(graph)})")
+        
+        # 模擬退火算法
+        print("執行模擬退火算法...")
+        path, cost, success, time_taken = sa_solver.solve(
+            graph, 
+            closed=True,
+            initial_temp=100.0,
+            cooling_rate=0.995,
+            max_iterations=5000
+        )
+        
+        results.append({
+            'graph': graph_name,
+            'algorithm': 'SA',
+            'nodes': len(graph),
+            'success': success,
+            'time': time_taken,
+            'cost': cost,
+            'path_length': len(path) if path else 0
+        })
+        
+        print(f"  結果: {'成功' if success else '失敗'}")
+        print(f"  時間: {time_taken:.4f}秒")
+        print(f"  成本: {cost}")
+        
+        # 顯示部分路徑
+        if path and len(path) > 0:
+            if len(path) <= 10:
+                print(f"  路徑: {path}")
+            else:
+                print(f"  路徑前5個: {path[:5]} ... {path[-5:]}")
+    
+    return results
+
+if __name__ == "__main__":
+    results = quick_experiment()
+    
+    # 簡單分析
+    print("\n" + "="*60)
+    print("實驗結果摘要")
+    print("="*60)
+    
+    for result in results:
+        print(f"\n{result['graph']}圖:")
+        print(f"  算法: {result['algorithm']}")
+        print(f"  成功率: {'成功' if result['success'] else '失敗'}")
+        print(f"  執行時間: {result['time']:.4f}秒")
+        print(f"  路徑長度: {result['path_length']}")
+    
+    print("\n快速實驗完成！")
