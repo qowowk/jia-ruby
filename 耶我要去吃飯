@@ -1,0 +1,274 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+// ==================== 1. 圖形類別 ====================
+class Graph {
+public:
+    int n;  // 頂點數量
+    vector<vector<int>> edges;  // 鄰接表
+    
+    Graph(int num_vertices) {
+        n = num_vertices;
+        edges.resize(n);
+    }
+    
+    void add_edge(int u, int v) {
+        edges[u].push_back(v);
+        edges[v].push_back(u);
+    }
+    
+    void print() {
+        cout << "\n 圖形資訊：" << endl;
+        cout << "頂點數: " << n << endl;
+        for (int i = 0; i < n; i++) {
+            cout << "頂點 " << i << " → ";
+            for (int neighbor : edges[i]) {
+                cout << neighbor << " ";
+            }
+            cout << endl;
+        }
+        cout << endl;
+    }
+    
+    // 隨機生成圖形
+    static Graph random_graph(int n, double edge_prob) {
+        Graph g(n);
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (rand() % 100 < edge_prob * 100) {
+                    g.add_edge(i, j);
+                }
+            }
+        }
+        return g;
+    }
+};
+
+// ==================== 2. DFS 演算法 ====================
+vector<int> dfs_find_path(Graph& g) {
+    cout << "\n 開始 DFS 搜索..." << endl;
+    auto start = chrono::high_resolution_clock::now();
+    
+    vector<int> best_path;
+    int visited_count = 0;
+    
+    for (int start_vertex = 0; start_vertex < g.n; start_vertex++) {
+        vector<int> path(g.n, -1);
+        vector<bool> visited(g.n, false);
+        path[0] = start_vertex;
+        visited[start_vertex] = true;
+        
+        stack<pair<int, int>> stk;  // (當前深度, 當前頂點)
+        stk.push({1, start_vertex});
+        
+        while (!stk.empty()) {
+            visited_count++;
+            auto [depth, current] = stk.top();
+            stk.pop();
+            
+            if (depth == g.n) {
+                best_path = path;
+                auto end = chrono::high_resolution_clock::now();
+                chrono::duration<double> duration = end - start;
+                
+                cout << " DFS 找到哈密頓路徑！" << endl;
+                cout << "   時間: " << duration.count() << " 秒" << endl;
+                cout << "   訪問節點數: " << visited_count << endl;
+                cout << "   路徑: ";
+                for (int v : best_path) cout << v << " ";
+                cout << endl;
+                
+                return best_path;
+            }
+            
+            for (int neighbor : g.edges[current]) {
+                if (!visited[neighbor]) {
+                    vector<int> new_path = path;
+                    vector<bool> new_visited = visited;
+                    new_path[depth] = neighbor;
+                    new_visited[neighbor] = true;
+                    stk.push({depth + 1, neighbor});
+                }
+            }
+        }
+    }
+    
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
+    
+    cout << "DFS 沒找到完整路徑" << endl;
+    cout << "   時間: " << duration.count() << " 秒" << endl;
+    cout << "   訪問節點數: " << visited_count << endl;
+    
+    return vector<int>();
+}
+
+// ==================== 3. 貪心演算法 ====================
+vector<int> greedy_find_path(Graph& g) {
+    cout << "\n 開始貪心演算法..." << endl;
+    auto start = chrono::high_resolution_clock::now();
+    
+    vector<int> path;
+    vector<bool> visited(g.n, false);
+    
+    // 隨機起點
+    int current = rand() % g.n;
+    path.push_back(current);
+    visited[current] = true;
+    
+    while (path.size() < g.n) {
+        // 找還沒訪問過的鄰居
+        vector<int> candidates;
+        for (int neighbor : g.edges[current]) {
+            if (!visited[neighbor]) {
+                candidates.push_back(neighbor);
+            }
+        }
+        
+        if (candidates.empty()) {
+            break;  // 無路可走
+        }
+        
+        // 隨機選一個鄰居
+        int next = candidates[rand() % candidates.size()];
+        path.push_back(next);
+        visited[next] = true;
+        current = next;
+    }
+    
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
+    
+    if (path.size() == g.n) {
+        cout << "貪心演算法找到路徑！" << endl;
+        cout << "   時間: " << duration.count() << " 秒" << endl;
+    } else {
+        cout << "貪心演算法找到部分路徑 (" << path.size() << "/" << g.n << ")" << endl;
+        cout << "   時間: " << duration.count() << " 秒" << endl;
+    }
+    
+    cout << "   路徑: ";
+    for (int v : path) cout << v << " ";
+    cout << endl;
+    
+    return path;
+}
+
+// ==================== 4. 快速隨機演算法 ====================
+vector<int> random_find_path(Graph& g, int attempts = 1000) {
+    cout << "\n 開始隨機演算法 (嘗試 " << attempts << " 次)..." << endl;
+    auto start = chrono::high_resolution_clock::now();
+    
+    vector<int> best_path;
+    int best_score = 0;
+    
+    for (int attempt = 0; attempt < attempts; attempt++) {
+        vector<int> path(g.n);
+        for (int i = 0; i < g.n; i++) path[i] = i;
+        random_shuffle(path.begin(), path.end());
+        
+        // 計算有效邊數
+        int score = 0;
+        for (int i = 0; i < g.n - 1; i++) {
+            int u = path[i];
+            int v = path[i + 1];
+            bool connected = false;
+            for (int neighbor : g.edges[u]) {
+                if (neighbor == v) {
+                    connected = true;
+                    break;
+                }
+            }
+            if (connected) score++;
+        }
+        
+        if (score > best_score) {
+            best_score = score;
+            best_path = path;
+            
+            // 如果找到完整路徑，立即返回
+            if (score == g.n - 1) {
+                auto end = chrono::high_resolution_clock::now();
+                chrono::duration<double> duration = end - start;
+                
+                cout << "隨機演算法找到完整路徑！" << endl;
+                cout << "   時間: " << duration.count() << " 秒" << endl;
+                cout << "   嘗試次數: " << attempt + 1 << endl;
+                cout << "   路徑: ";
+                for (int v : best_path) cout << v << " ";
+                cout << endl;
+                
+                return best_path;
+            }
+        }
+    }
+    
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
+    
+    cout << "  隨機演算法最佳找到 " << best_score << "/" << g.n-1 << " 條邊" << endl;
+    cout << "   時間: " << duration.count() << " 秒" << endl;
+    cout << "   最佳路徑: ";
+    for (int v : best_path) cout << v << " ";
+    cout << endl;
+    
+    return best_path;
+}
+
+// ==================== 5. 主程式 ====================
+int main() {
+    
+    // 設定隨機種子
+    srand(time(0));
+    
+    // ===== 測試案例 1: 小圖 =====
+    cout << "\n 測試案例 1: 簡單圖形 (5頂點)" << endl;
+    cout << "==========================================" << endl;
+    
+    Graph g1(5);
+    g1.add_edge(0, 1);
+    g1.add_edge(0, 2);
+    g1.add_edge(1, 2);
+    g1.add_edge(1, 3);
+    g1.add_edge(2, 3);
+    g1.add_edge(3, 4);
+    
+    g1.print();
+    
+    auto dfs_result1 = dfs_find_path(g1);
+    auto greedy_result1 = greedy_find_path(g1);
+    auto random_result1 = random_find_path(g1, 500);
+    
+    // ===== 測試案例 2: 隨機圖 =====
+    cout << "\n\n 測試案例 2: 隨機圖形 (8頂點, 40%邊)" << endl;
+    cout << "==========================================" << endl;
+    
+    Graph g2 = Graph::random_graph(8, 0.4);
+    g2.print();
+    
+    auto dfs_result2 = dfs_find_path(g2);
+    auto greedy_result2 = greedy_find_path(g2);
+    auto random_result2 = random_find_path(g2, 1000);
+    
+    // ===== 測試案例 3: 密圖 =====
+    cout << "\n\n 測試案例 3: 密集圖形 (6頂點, 70%邊)" << endl;
+    cout << "==========================================" << endl;
+    
+    Graph g3 = Graph::random_graph(6, 0.7);
+    g3.print();
+    
+    auto dfs_result3 = dfs_find_path(g3);
+    auto greedy_result3 = greedy_find_path(g3);
+    auto random_result3 = random_find_path(g3, 500);
+    
+    // ===== 顯示總結 =====
+    cout << "\n\n==========================================" << endl;
+    cout << "演算法比較總結" << endl;
+    cout << "==========================================" << endl;
+    cout << "1. DFS: 一定找到但很慢" << endl;
+    cout << "2. 貪心: 很快但不一定找到" << endl;
+    cout << "3. 隨機: 中等速度，成功率看運氣" << endl;
+    cout << "\n 測試完成！" << endl;
+    
+    return 0;
+}
